@@ -1,1 +1,5 @@
 # node-img-converter
+
+simple node application, that listens to TCP connections and converts pdf files into png
+
+npm install && node index.js to run
