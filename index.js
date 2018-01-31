@@ -10,15 +10,20 @@ const   hostname = '0.0.0.0',
         port = 3001,
         awsID /* ENV VAR HERE */,
         awsSecret /* ENV VAR HERE */,
-        awsBucket /* ENV VAR HERE */;
+        awsBucket /* ENV VAR HERE */,
+        awsRegion /* ENV VAR HERE */;
+
+// creating TCP server
 
 net.createServer(function(socket) {
     
-    console.log('CONNECTED: ' + socket.remoteAddress +':'+ socket.remotePort);
+    console.log(`CONNECTED: ${socket.remoteAddress}:${socket.remotePort}`);
     
     socket.on('data', function(data) {
 
-        aws.config.update({ accessKeyId: awsID, secretAccessKey: awsSecret, region: 'eu-west-1' });
+        // setting up AWS sdk
+
+        aws.config.update({ accessKeyId: awsID, secretAccessKey: awsSecret, region: awsRegion });
         let s3 = new aws.S3(),
             dataObj,
             urlToConvert,
@@ -29,7 +34,7 @@ net.createServer(function(socket) {
         try {
             dataObj = JSON.parse(data);
         } catch (err) {
-            socket.write('Bad input data: ' + err);
+            socket.write(`Bad input data: ${err}`);
             return;
         }
 
@@ -50,15 +55,16 @@ net.createServer(function(socket) {
                 ACL         : 'public-read',
             }
 
-            // Write the data back to the socket, the client will receive it as data from the server
             if (dataObj && dataObj.type == 'pdf') {
+                // getting signed URL for file upload
                 s3.getSignedUrl('putObject', s3_params_convert, function(err, convertData) {
                     if (err) {
                         console.log(err);
                     }
-
+                    // converting file
                     gm(request.get(urlToConvert), 'img.pdf').setFormat('png').quality(100).toBuffer(function (err, buffer) {
                         if (err) console.log(err);
+                        // uploading converted file
                         request({ 
                             url: convertData, 
                             method: 'PUT', 
@@ -74,9 +80,9 @@ net.createServer(function(socket) {
     });
     
     socket.on('close', function(data) {
-        console.log('CLOSED: ' + socket.remoteAddress +' '+ socket.remotePort);
+        console.log(`CLOSED: ${socket.remoteAddress}:${socket.remotePort}`);
     });
     
 }).listen(port, hostname);
 
-console.log(`Node server is listening on port ${port} in development mode`);
+console.log(`Node server is listening on port ${port}`);
